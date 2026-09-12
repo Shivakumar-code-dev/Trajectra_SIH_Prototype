@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — YIT Indoor Navigation Admin</title>
+  <meta name="description" content="Admin dashboard for YIT Smart Indoor Navigation System."/>
+  <link rel="stylesheet" href="css/design-system.css"/>
+  <!-- Three.js for 3D preview -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    /* ── Section Pages ─────────────────────────────────────────── */
+    .section-page { display: none; }
+    .section-page.active { display: block; }
+
+    /* ── Dashboard Grid ────────────────────────────────────────── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    /* ── 3D Mini Preview ───────────────────────────────────────── */
+    #miniViewer {
+      width: 100%; height: 100%;
+      background: transparent;
+      border-radius: var(--radius-lg);
+    }
+
+    /* ── Graph Editor Canvas ───────────────────────────────────── */
+    #graphCanvas {
+      width: 100%; height: 100%;
+      display: block;
+    }
+
+    /* ── Route Result ──────────────────────────────────────────── */
+    .instruction-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .instruction-item:last-child { border-bottom: none; }
+
+    /* ── QR Grid ───────────────────────────────────────────────── */
+    .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:16px; }
+    .qr-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-align: center;
+    }
+    .qr-placeholder {
+      width: 120px; height: 120px;
+      background: white;
+      border-radius: var(--radius-md);
+      margin: 0 auto 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: #333;
+      padding: 8px;
+    }
+
+    /* ── Analytics Chart Area ──────────────────────────────────── */
+    .chart-bar-container { display: flex; flex-direction: column; gap: 10px; }
+    .chart-bar-row { display: flex; align-items: center; gap: 10px; }
+    .chart-bar-label { width: 140px; font-size: 12px; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+    .chart-bar-track { flex: 1; height: 8px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
+    .chart-bar-fill { height: 100%; border-radius: 99px; background: var(--brand-gradient); transition: width 0.6s ease; }
+    .chart-bar-value { width: 36px; font-size: 12px; color: var(--text-muted); text-align: right; }
+
+    /* ── Node Type Legend ──────────────────────────────────────── */
+    .node-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ── Publish Banner ────────────────────────────────────────── */
+    .publish-banner {
+      background: linear-gradient(135deg, rgba(79,70,229,0.15), rgba(6,182,212,0.1));
+      border: 1px solid rgba(79,70,229,0.3);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ─── SIDEBAR ──────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon">🧭</div>
+        <div class="brand-text">
+          <span class="brand-name">YIT IndoorNav</span>
+          <span class="brand-sub">ADMIN CONSOLE</span>
+        </div>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">Overview</div>
+        <a class="nav-item active" data-page="dashboard" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">3D Model</div>
+        <a class="nav-item" data-page="model" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+          3D Model
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Building</div>
+        <a class="nav-item" data-page="floors" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+          Floors
+        </a>
+        <a class="nav-item" data-page="rooms" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3h18v18H3z"/><path d="M9 3v18"/>
+          </svg>
+          Rooms
+        </a>
+        <a class="nav-item" data-page="doors" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3h18v18H3z"/><circle cx="15" cy="12" r="1"/>
+          </svg>
+          Doors
+        </a>
+        <a class="nav-item" data-page="destinations" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          Destinations
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Navigation</div>
+        <a class="nav-item" data-page="graph" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
+          </svg>
+          Navigation Graph
+        </a>
+        <a class="nav-item" data-page="qr" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="5" height="5"/><rect x="16" y="3" width="5" height="5"/>
+            <rect x="3" y="16" width="5" height="5"/>
+            <path d="M21 16h-3v3m-5-8h5v5h-5zm0 0v-5"/>
+          </svg>
+          QR Checkpoints
+        </a>
+        <a class="nav-item" data-page="route-test" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Route Testing
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">System</div>
+        <a class="nav-item" data-page="users" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/>
+            <path d="M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+          Users
+        </a>
+        <a class="nav-item" data-page="analytics" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          Analytics
+        </a>
+        <a class="nav-item" data-page="settings" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+          Settings
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card" id="userCard">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userNameDisplay">Admin User</div>
+          <div class="user-role">ADMINISTRATOR</div>
+        </div>
+        <svg style="width:16px;opacity:0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </div>
+      <button class="btn btn-ghost w-full" style="margin-top:8px;justify-content:flex-start;gap:8px;" id="logoutBtn">
+        <svg style="width:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN CONTENT ─────────────────────────────────────────── -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-icon btn-ghost" id="sidebarToggle" style="display:none;">☰</button>
+        <h2 class="topbar-title" id="topbarTitle">Dashboard</h2>
+      </div>
+      <div class="topbar-actions">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);">
+          <span class="status-dot online"></span>
+          System Online
+        </div>
+        <button class="btn btn-primary btn-sm" id="publishBtn">
+          🚀 Publish Map
+        </button>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: DASHBOARD
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Welcome back, <span id="welcomeName">Admin</span> 👋</h1>
+            <p class="page-description">Yenepoya Institute of Technology — Indoor Navigation System</p>
+          </div>
+          <div style="font-size:13px;color:var(--text-muted);" id="lastUpdated">Loading…</div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(79,70,229,0.15);">🏢</div>
+            <div class="stat-value" id="stat-floors">—</div>
+            <div class="stat-label">Floors</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(16,185,129,0.15);">🚪</div>
+            <div class="stat-value" id="stat-rooms">—</div>
+            <div class="stat-label">Rooms</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(245,158,11,0.15);">📍</div>
+            <div class="stat-value" id="stat-destinations">—</div>
+            <div class="stat-label">Destinations</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(6,182,212,0.15);">🔗</div>
+            <div class="stat-value" id="stat-nodes">—</div>
+            <div class="stat-label">Nav Nodes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(124,58,237,0.15);">↔️</div>
+            <div class="stat-value" id="stat-edges">—</div>
+            <div class="stat-label">Nav Paths</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(239,68,68,0.15);">👥</div>
+            <div class="stat-value" id="stat-users">—</div>
+            <div class="stat-label">Users</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(16,185,129,0.15);">🗺️</div>
+            <div class="stat-value" id="stat-sessions">—</div>
+            <div class="stat-label">Nav Sessions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:rgba(79,70,229,0.15);">🧊</div>
+            <div class="stat-value" id="stat-model" style="font-size:14px;">—</div>
+            <div class="stat-label">Model Status</div>
+          </div>
+        </div>
+
+        <!-- Dashboard Grid: 3D Preview + System Status -->
+        <div class="dashboard-grid">
+          <div class="card" style="padding:0;overflow:hidden;">
+            <div class="card-header" style="padding:20px 24px 0;">
+              <div>
+                <div class="card-title">3D Building Preview</div>
+                <div class="card-subtitle">Sample model — upload your GLB/GLTF to replace</div>
+              </div>
+              <button class="btn btn-sm btn-secondary" onclick="navigateTo('model')">Manage Model</button>
+            </div>
+            <div class="viewer-container" id="dashboardViewer" style="border:none;border-radius:0;aspect-ratio:16/8;margin-top:12px;">
+              <div class="viewer-floor-selector" id="dashFloorSelector"></div>
+              <div class="viewer-controls">
+                <button class="viewer-ctrl-btn" id="dashResetCam" title="Reset Camera">⟳</button>
+                <button class="viewer-ctrl-btn" id="dashFullscreen" title="Fullscreen">⛶</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:20px;">
+            <!-- System Status -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">System Status</div>
+                <span class="badge badge-success">● Online</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px;" id="systemStatus">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+                  <span style="color:var(--text-secondary);">Firebase Auth</span>
+                  <span class="badge badge-success" id="firebaseStatus">Connected</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+                  <span style="color:var(--text-secondary);">Firestore DB</span>
+                  <span class="badge badge-success" id="firestoreStatus">Connected</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+                  <span style="color:var(--text-secondary);">Storage</span>
+                  <span class="badge badge-success">Connected</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+                  <span style="color:var(--text-secondary);">Flask API</span>
+                  <span class="badge badge-info" id="apiStatus">Checking…</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+                  <span style="color:var(--text-secondary);">Map Published</span>
+                  <span class="badge" id="publishStatus">Not Published</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Quick Actions</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('rooms')">+ Add Room</button>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('destinations')">+ Destination</button>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('graph')">Edit Graph</button>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('route-test')">Test Route</button>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('qr')">+ QR Code</button>
+                <button class="btn btn-primary btn-sm" id="quickPublish">Publish Map</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: 3D MODEL
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-model">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">3D Model Management</h1>
+            <p class="page-description">Upload, manage and preview the college 3D model.</p>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:24px;">
+          <!-- Upload -->
+          <div>
+            <div class="card mb-24">
+              <div class="card-header">
+                <div class="card-title">Upload New Model</div>
+              </div>
+              <div class="dropzone" id="modelDropzone">
+                <input type="file" id="modelFileInput" accept=".glb,.gltf,.obj,.fbx,.skp,.dae" style="display:none;"/>
+                <div class="dropzone-icon">📦</div>
+                <div class="dropzone-title">Drop your 3D model here</div>
+                <div class="dropzone-sub">Supported: GLB, GLTF (preferred) · OBJ, FBX, SKP (conversion required)</div>
+                <div style="margin-top:16px;">
+                  <button class="btn btn-primary" id="browseModelBtn">Browse File</button>
+                </div>
+              </div>
+
+              <div id="uploadProgress" style="display:none;margin-top:16px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
+                  <span id="uploadFileName">filename.glb</span>
+                  <span id="uploadPercent">0%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="uploadProgressFill" style="width:0%"></div></div>
+                <p id="uploadStatusMsg" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></p>
+              </div>
+            </div>
+
+            <!-- Format Guide -->
+            <div class="card">
+              <div class="card-header"><div class="card-title">Format Guide</div></div>
+              <div style="font-size:13px;color:var(--text-secondary);line-height:1.8;">
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                  <span class="badge badge-success">✓ GLB</span>
+                  <span>Ready immediately — preferred runtime format</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                  <span class="badge badge-success">✓ GLTF</span>
+                  <span>Ready immediately — uses separate asset files</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                  <span class="badge badge-warning">⚙ OBJ/FBX</span>
+                  <span>Requires conversion to GLB (see docs)</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <span class="badge badge-warning">⚙ SKP</span>
+                  <span>Export from SketchUp as FBX → convert to GLB</span>
+                </div>
+              </div>
+              <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);font-size:12px;color:var(--text-muted);">
+                <strong>Conversion command:</strong><br/>
+                <code style="color:var(--text-accent);">npx gltf-pipeline -i model.fbx -o model.glb</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model List + Preview -->
+          <div>
+            <div class="card mb-24">
+              <div class="card-header">
+                <div class="card-title">Uploaded Models</div>
+                <button class="btn btn-sm btn-ghost" id="refreshModels">↺ Refresh</button>
+              </div>
+              <div id="modelList">
+                <div style="text-align:center;padding:24px;color:var(--text-muted);">Loading models…</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Full 3D Preview</div>
+                <button class="btn btn-sm btn-secondary" id="resetModelCamera">Reset View</button>
+              </div>
+              <div class="viewer-container" id="fullModelViewer" style="aspect-ratio:4/3;">
+                <div style="display:flex;align-items:center;justify-content:center;height:100%;
+                            color:var(--text-muted);font-size:14px;flex-direction:column;gap:8px;">
+                  <span style="font-size:48px;">🧊</span>
+                  <span>Activate a model to preview</span>
+                </div>
+                <div class="viewer-controls">
+                  <button class="viewer-ctrl-btn" id="modelZoomIn">+</button>
+                  <button class="viewer-ctrl-btn" id="modelZoomOut">−</button>
+                  <button class="viewer-ctrl-btn" id="modelWireframe">⬚</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: FLOORS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-floors">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Floor Management</h1>
+            <p class="page-description">Configure building floors and their properties.</p>
+          </div>
+          <button class="btn btn-primary" id="addFloorBtn">+ Add Floor</button>
+        </div>
+        <div id="floorsContent">
+          <div style="text-align:center;padding:48px;color:var(--text-muted);">Loading floors…</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: ROOMS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-rooms">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Room Management</h1>
+            <p class="page-description">Add and configure all rooms in the building.</p>
+          </div>
+          <button class="btn btn-primary" id="addRoomBtn">+ Add Room</button>
+        </div>
+        <div style="margin-bottom:16px;">
+          <input type="text" class="form-input" id="roomSearch" placeholder="🔍  Search rooms…"
+                 style="max-width:320px;"/>
+        </div>
+        <div id="roomsContent">
+          <div style="text-align:center;padding:48px;color:var(--text-muted);">Loading rooms…</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: DOORS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-doors">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Door Management</h1>
+            <p class="page-description">Configure doors as connection points between rooms and corridors.</p>
+          </div>
+          <button class="btn btn-primary" id="addDoorBtn">+ Add Door</button>
+        </div>
+        <div id="doorsContent">
+          <div style="text-align:center;padding:48px;color:var(--text-muted);">Loading doors…</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: DESTINATIONS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-destinations">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Destination Management</h1>
+            <p class="page-description">Named places users can navigate to.</p>
+          </div>
+          <button class="btn btn-primary" id="addDestBtn">+ Add Destination</button>
+        </div>
+        <div style="margin-bottom:16px;">
+          <input type="text" class="form-input" id="destSearch"
+                 placeholder="🔍  Search destinations…" style="max-width:320px;"/>
+        </div>
+        <div id="destContent">
+          <div style="text-align:center;padding:48px;color:var(--text-muted);">Loading…</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: NAVIGATION GRAPH
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-graph">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Navigation Graph Editor</h1>
+            <p class="page-description">Create navigation nodes and paths on the floor plan.</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" id="graphLoadBtn">↺ Load Graph</button>
+            <button class="btn btn-primary" id="graphSaveBtn">💾 Save Graph</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:16px;margin-bottom:16px;">
+          <div class="form-group" style="margin:0;">
+            <select class="form-select" id="graphFloorSelect" style="width:180px;">
+              <option value="">Select Floor…</option>
+            </select>
+          </div>
+          <div class="graph-toolbar">
+            <button class="tool-btn active" id="tool-select" data-tool="select">↖ Select</button>
+            <button class="tool-btn" id="tool-add-node" data-tool="add-node">⊕ Add Node</button>
+            <button class="tool-btn" id="tool-add-edge" data-tool="add-edge">↔ Add Path</button>
+            <button class="tool-btn" id="tool-delete" data-tool="delete">🗑 Delete</button>
+            <select class="form-select" id="nodeTypeSelect" style="width:130px;padding:7px 10px;font-size:12px;">
+              <option value="CORRIDOR">Corridor</option>
+              <option value="DOOR">Door</option>
+              <option value="ROOM">Room</option>
+              <option value="STAIRCASE">Staircase</option>
+              <option value="ELEVATOR">Elevator</option>
+              <option value="ENTRANCE">Entrance</option>
+              <option value="EXIT">Exit</option>
+              <option value="DESTINATION">Destination</option>
+              <option value="LANDMARK">Landmark</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="node-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#60A5FA;"></div> Corridor</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#34D399;"></div> Door</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#A78BFA;"></div> Room</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#FBBF24;"></div> Staircase</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#F87171;"></div> Elevator</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4ADE80;"></div> Entrance</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#FB923C;"></div> Destination</div>
+        </div>
+
+        <div style="position:relative;">
+          <div class="graph-canvas-container">
+            <canvas id="graphCanvas"></canvas>
+            <div id="graphHint" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+                 font-size:12px;color:var(--text-muted);background:rgba(22,22,42,0.8);
+                 padding:6px 14px;border-radius:99px;pointer-events:none;">
+              Select a floor to start editing. Click to add nodes, drag between nodes to connect.
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:16px;margin-top:16px;">
+          <div class="card" style="flex:1;">
+            <div class="card-title" style="margin-bottom:8px;">Graph Stats</div>
+            <div style="display:flex;gap:16px;font-size:13px;color:var(--text-secondary);">
+              <span>Nodes: <strong id="graphNodeCount" style="color:var(--text-primary);">0</strong></span>
+              <span>Edges: <strong id="graphEdgeCount" style="color:var(--text-primary);">0</strong></span>
+            </div>
+          </div>
+          <div class="card" style="flex:1;">
+            <div class="card-title" style="margin-bottom:8px;">Selected Node</div>
+            <div id="selectedNodeInfo" style="font-size:13px;color:var(--text-muted);">None</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: QR CHECKPOINTS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-qr">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">QR Checkpoints</h1>
+            <p class="page-description">QR codes placed around the building for indoor positioning.</p>
+          </div>
+          <button class="btn btn-primary" id="addQRBtn">+ Add Checkpoint</button>
+        </div>
+        <div class="qr-grid" id="qrGrid">
+          <div style="text-align:center;padding:48px;color:var(--text-muted);">Loading QR checkpoints…</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: ROUTE TESTING
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-route-test">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Route Testing</h1>
+            <p class="page-description">Test A* navigation routes before publishing.</p>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:24px;">
+          <div>
+            <div class="card mb-16">
+              <div class="card-title" style="margin-bottom:16px;">Calculate Route</div>
+              <div class="form-group">
+                <label class="form-label">Start Node / Destination</label>
+                <select class="form-select" id="routeStartSelect">
+                  <option value="">Select start…</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">End Node / Destination</label>
+                <select class="form-select" id="routeEndSelect">
+                  <option value="">Select destination…</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                  <input type="checkbox" id="accessibleOnly" style="width:16px;height:16px;"/>
+                  Accessible route only
+                </label>
+              </div>
+              <button class="btn btn-primary w-full" id="calculateRouteBtn">
+                🧭 Calculate A* Route
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div class="card" id="routeResultCard" style="display:none;">
+              <div class="card-header">
+                <div class="card-title">Route Result</div>
+                <div id="routeBadges" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+              </div>
+              <div id="routeSummary" style="margin-bottom:16px;"></div>
+              <div id="routeInstructions" class="route-card"></div>
+            </div>
+            <div id="noRouteMsg" style="display:none;text-align:center;padding:48px;color:var(--text-muted);">
+              <div style="font-size:48px;margin-bottom:12px;">🚫</div>
+              No route found. Check that the navigation graph is connected.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: USERS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-users">
+        <div class="page-header">
+          <h1 class="page-title">User Management</h1>
+        </div>
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted);">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: ANALYTICS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-analytics">
+        <div class="page-header">
+          <h1 class="page-title">Analytics</h1>
+          <p class="page-description">Navigation usage statistics and popular destinations.</p>
+        </div>
+        <div class="grid-2" style="gap:24px;">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px;">Popular Destinations</div>
+            <div class="chart-bar-container" id="popularDestChart">
+              <div style="color:var(--text-muted);font-size:13px;">Loading…</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px;">Recent Sessions</div>
+            <div id="recentSessions" style="font-size:13px;color:var(--text-muted);">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           PAGE: SETTINGS
+      ══════════════════════════════════════════════════════════ -->
+      <div class="section-page" id="page-settings">
+        <div class="page-header">
+          <h1 class="page-title">Settings</h1>
+        </div>
+        <div class="grid-2" style="gap:24px;">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px;">Building Configuration</div>
+            <div class="form-group">
+              <label class="form-label">Building Name</label>
+              <input type="text" class="form-input" value="Yenepoya Institute of Technology" id="buildingName"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-input" value="Moodbidri, Karnataka, India" id="buildingLocation"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Building ID</label>
+              <input type="text" class="form-input" value="yit-moodbidri-main" disabled/>
+            </div>
+            <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px;">Navigation Settings</div>
+            <div class="form-group">
+              <label class="form-label">Walking Speed (m/s)</label>
+              <input type="number" class="form-input" value="1.2" step="0.1" min="0.5" max="3" id="walkSpeed"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Stair Speed (m/s)</label>
+              <input type="number" class="form-input" value="0.5" step="0.1" min="0.2" max="2" id="stairSpeed"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">API Base URL</label>
+              <input type="text" class="form-input" value="http://localhost:5000/api" id="apiUrl"/>
+            </div>
+            <button class="btn btn-secondary" id="saveNavSettings">Save</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<!-- ── Modals ────────────────────────────────────────────────────── -->
+
+<!-- Add/Edit Floor Modal -->
+<div class="modal-backdrop" id="floorModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="floorModalTitle">Add Floor</h2>
+      <button class="modal-close" onclick="closeModal('floorModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="floorId"/>
+      <div class="form-group">
+        <label class="form-label">Floor Name</label>
+        <input type="text" class="form-input" id="floorName" placeholder="e.g. Ground Floor"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Floor Number</label>
+        <input type="number" class="form-input" id="floorNumber" placeholder="0 = Ground" min="0"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Elevation (m)</label>
+        <input type="number" class="form-input" id="floorElevation" placeholder="0" step="0.1"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="floorDescription" style="min-height:80px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('floorModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveFloorBtn">Save Floor</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Room Modal -->
+<div class="modal-backdrop" id="roomModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="roomModalTitle">Add Room</h2>
+      <button class="modal-close" onclick="closeModal('roomModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="roomId"/>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Room Name</label>
+          <input type="text" class="form-input" id="roomName" placeholder="CS Lab 1"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Room Number</label>
+          <input type="text" class="form-input" id="roomNumber" placeholder="101"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Floor</label>
+        <select class="form-select" id="roomFloor"></select>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Department</label>
+          <input type="text" class="form-input" id="roomDepartment" placeholder="Computer Science"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="roomCategory">
+            <option value="CLASSROOM">Classroom</option>
+            <option value="LAB">Laboratory</option>
+            <option value="OFFICE">Office</option>
+            <option value="LIBRARY">Library</option>
+            <option value="CANTEEN">Canteen</option>
+            <option value="AUDITORIUM">Auditorium</option>
+            <option value="SEMINAR">Seminar Hall</option>
+            <option value="RESTROOM">Restroom</option>
+            <option value="ENTRANCE">Entrance</option>
+            <option value="STAIRCASE">Staircase</option>
+            <option value="ELEVATOR">Elevator</option>
+            <option value="CORRIDOR">Corridor</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="roomDescription" style="min-height:80px;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:4px;">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">X Coord</label>
+          <input type="number" class="form-input" id="roomX" placeholder="0" step="0.1"/>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Y Coord</label>
+          <input type="number" class="form-input" id="roomY" placeholder="0" step="0.1"/>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">Z Coord</label>
+          <input type="number" class="form-input" id="roomZ" placeholder="0" step="0.1"/>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+        <input type="checkbox" id="roomAccessible" checked style="width:16px;height:16px;"/>
+        Wheelchair accessible
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('roomModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveRoomBtn">Save Room</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Destination Modal -->
+<div class="modal-backdrop" id="destModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="destModalTitle">Add Destination</h2>
+      <button class="modal-close" onclick="closeModal('destModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="destId"/>
+      <div class="form-group">
+        <label class="form-label">Destination Name</label>
+        <input type="text" class="form-input" id="destName" placeholder="Computer Science Lab"/>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Floor</label>
+          <select class="form-select" id="destFloor"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="destCategory">
+            <option value="LAB">Lab</option>
+            <option value="CLASSROOM">Classroom</option>
+            <option value="OFFICE">Office</option>
+            <option value="LIBRARY">Library</option>
+            <option value="CANTEEN">Canteen</option>
+            <option value="FACILITY">Facility</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <input type="text" class="form-input" id="destDepartment"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Room Number</label>
+        <input type="text" class="form-input" id="destRoomNumber"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="destDescription" style="min-height:80px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Navigation Node ID (optional)</label>
+        <input type="text" class="form-input" id="destNodeId" placeholder="node-xxxxxxxx"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('destModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveDestBtn">Save Destination</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add QR Modal -->
+<div class="modal-backdrop" id="qrModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Add QR Checkpoint</h2>
+      <button class="modal-close" onclick="closeModal('qrModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Label</label>
+        <input type="text" class="form-input" id="qrLabel" placeholder="Main Entrance QR"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Floor</label>
+        <select class="form-select" id="qrFloor"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Node ID</label>
+        <input type="text" class="form-input" id="qrNodeId" placeholder="node-xxxxxxxx"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="qrDescription" style="min-height:70px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('qrModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveQRBtn">Create Checkpoint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ── Scripts ─────────────────────────────────────────────────── -->
+<script type="module" src="js/dashboard-app.js"></script>
+
+</body>
+</html>

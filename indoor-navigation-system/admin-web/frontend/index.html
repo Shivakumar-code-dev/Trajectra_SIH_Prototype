@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — YIT Indoor Navigation</title>
+  <meta name="description" content="Admin login for Yenepoya Institute of Technology Smart Indoor Navigation System." />
+  <link rel="stylesheet" href="css/design-system.css" />
+  <style>
+    .floating-particles {
+      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 3px; height: 3px;
+      background: rgba(79,70,229,0.5);
+      border-radius: 50%;
+      animation: float-up linear infinite;
+    }
+    @keyframes float-up {
+      from { transform: translateY(100vh) scale(0); opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      to   { transform: translateY(-10vh) scale(1); opacity: 0; }
+    }
+    .login-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(79,70,229,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,70,229,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .error-msg {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #FCA5A5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+    .college-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(79,70,229,0.1);
+      border: 1px solid rgba(79,70,229,0.2);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 11px; font-weight: 600;
+      color: #818CF8;
+      margin-bottom: 16px;
+    }
+    .version-tag {
+      position: absolute; top: 20px; right: 24px;
+      font-size: 12px; color: var(--text-muted);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+<div class="auth-page" id="loginPage">
+  <!-- Background -->
+  <div class="auth-bg"></div>
+  <div class="login-grid"></div>
+  <div class="floating-particles" id="particles"></div>
+
+  <span class="version-tag">YIT IndoorNav v1.0</span>
+
+  <!-- Login Card -->
+  <div class="auth-card fade-in">
+    <div class="auth-logo">
+      <div class="auth-logo-icon pulse-glow">🧭</div>
+      <div class="college-tag">🏛️ Yenepoya Institute of Technology</div>
+      <h1 class="auth-title">Admin Dashboard</h1>
+      <p class="auth-subtitle">Sign in to manage the indoor navigation system</p>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label class="form-label" for="emailInput">Email Address</label>
+        <input id="emailInput" type="email" class="form-input"
+               placeholder="admin@yit.edu.in" required autocomplete="email" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="passwordInput">Password</label>
+        <div style="position:relative;">
+          <input id="passwordInput" type="password" class="form-input"
+                 placeholder="Enter your password" required autocomplete="current-password"
+                 style="padding-right: 44px;" />
+          <button type="button" id="togglePassword"
+                  style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                         background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;">
+            👁️
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+        <a href="#" id="forgotLink" style="font-size:13px;color:var(--text-accent);text-decoration:none;">
+          Forgot password?
+        </a>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full btn-lg" id="loginBtn">
+        <span id="loginBtnText">Sign In</span>
+        <div class="spinner hidden" id="loginSpinner" style="width:16px;height:16px;"></div>
+      </button>
+    </form>
+
+    <div style="margin-top:24px;text-align:center;font-size:12px;color:var(--text-muted);">
+      <span>🔒 Secure admin access only.</span><br/>
+      <span>Students use the YIT Indoor Nav Android app.</span>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div class="modal-backdrop" id="forgotModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Reset Password</h2>
+        <button class="modal-close" id="forgotClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">
+          Enter your admin email. A password reset link will be sent to you.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input id="resetEmail" type="email" class="form-input" placeholder="admin@yit.edu.in" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="forgotCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="sendResetBtn">Send Reset Link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { FIREBASE_CONFIG, APP_CONFIG, DEMO_MODE } from './js/firebase-config.js';
+
+  // ── Particles ───────────────────────────────────────────────────
+  const pc = document.getElementById('particles');
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `left:${Math.random()*100}%;animation-duration:${6+Math.random()*8}s;
+                        animation-delay:${Math.random()*6}s;width:${2+Math.random()*4}px;
+                        height:${2+Math.random()*4}px;`;
+    pc.appendChild(p);
+  }
+
+  // ── Toast Helper ────────────────────────────────────────────────
+  function showToast(msg, type='info') {
+    const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+    const tc = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span><span class="toast-text">${msg}</span>`;
+    tc.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  function hideError() { document.getElementById('errorMsg').classList.remove('show'); }
+
+  function setLoading(loading) {
+    document.getElementById('loginBtnText').textContent = loading ? 'Signing in…' : 'Sign In';
+    document.getElementById('loginSpinner').classList.toggle('hidden', !loading);
+    document.getElementById('loginBtn').disabled = loading;
+  }
+
+  // ── Password Toggle ─────────────────────────────────────────────
+  document.getElementById('togglePassword').addEventListener('click', () => {
+    const inp = document.getElementById('passwordInput');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+
+  // ── Demo Mode ───────────────────────────────────────────────────
+  if (DEMO_MODE) {
+    showToast('Running in Demo Mode. Configure Firebase to enable real auth.', 'warning');
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      hideError();
+      await new Promise(r => setTimeout(r, 1000));
+      // Demo: any login works
+      sessionStorage.setItem('yit_demo_mode', 'true');
+      sessionStorage.setItem('yit_user', JSON.stringify({
+        uid: 'demo-admin',
+        email: document.getElementById('emailInput').value || 'admin@yit.edu.in',
+        name: 'Demo Admin',
+        role: 'ADMIN',
+      }));
+      window.location.href = 'dashboard.html';
+    });
+
+    document.getElementById('forgotLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      showToast('Password reset: configure Firebase first.', 'warning');
+    });
+    return;
+  }
+
+  // ── Real Firebase Auth ──────────────────────────────────────────
+  const app  = initializeApp(FIREBASE_CONFIG);
+  const auth = getAuth(app);
+
+  // Redirect if already logged in
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`${APP_CONFIG.apiBaseUrl}/auth/verify`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.user?.role === 'ADMIN' || data.user?.role === 'SUPER_ADMIN') {
+          sessionStorage.setItem('yit_user', JSON.stringify(data.user));
+          window.location.href = 'dashboard.html';
+        }
+      } catch (_) {}
+    }
+  });
+
+  // Login Form
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+    setLoading(true);
+
+    const email    = document.getElementById('emailInput').value.trim();
+    const password = document.getElementById('passwordInput').value;
+
+    try {
+      const cred  = await signInWithEmailAndPassword(auth, email, password);
+      const token = await cred.user.getIdToken();
+
+      // Verify admin role on backend
+      const res  = await fetch(`${APP_CONFIG.apiBaseUrl}/auth/verify`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+
+      if (!data.user?.role || !['ADMIN','SUPER_ADMIN'].includes(data.user.role)) {
+        await auth.signOut();
+        showError('Access denied. Admin privileges required.');
+        setLoading(false);
+        return;
+      }
+
+      sessionStorage.setItem('yit_token', token);
+      sessionStorage.setItem('yit_user', JSON.stringify(data.user));
+      window.location.href = 'dashboard.html';
+
+    } catch (err) {
+      setLoading(false);
+      const codes = {
+        'auth/user-not-found':     'No account found with this email.',
+        'auth/wrong-password':     'Incorrect password.',
+        'auth/too-many-requests':  'Too many attempts. Try again later.',
+        'auth/invalid-email':      'Invalid email address.',
+        'auth/invalid-credential': 'Invalid email or password.',
+      };
+      showError(codes[err.code] || `Login failed: ${err.message}`);
+    }
+  });
+
+  // Forgot Password
+  document.getElementById('forgotLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('forgotModal').classList.add('open');
+  });
+
+  ['forgotClose','forgotCancelBtn'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById('forgotModal').classList.remove('open');
+    });
+  });
+
+  document.getElementById('sendResetBtn').addEventListener('click', async () => {
+    const email = document.getElementById('resetEmail').value.trim();
+    if (!email) { showToast('Enter your email address.', 'error'); return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      showToast('Password reset email sent!', 'success');
+      document.getElementById('forgotModal').classList.remove('open');
+    } catch (err) {
+      showToast(`Failed: ${err.message}`, 'error');
+    }
+  });
+</script>
+</body>
+</html>

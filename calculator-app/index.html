@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A sleek, modern, multi-mode calculator with scientific math tools, interactive history log, and unit converter.">
+    <title>QuantumCalc - Next-Gen Smart Calculator</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+    <div class="background-globes">
+        <div class="globe globe-1"></div>
+        <div class="globe globe-2"></div>
+        <div class="globe globe-3"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <aside class="app-sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <i class="fa-solid fa-atom brand-icon"></i>
+                    <span>Quantum<strong>Calc</strong></span>
+                </div>
+                <button class="icon-btn close-sidebar-btn" id="closeSidebar" aria-label="Close sidebar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-mode="standard">
+                    <i class="fa-solid fa-calculator"></i> Standard
+                </button>
+                <button class="nav-item" data-mode="scientific">
+                    <i class="fa-solid fa-flask"></i> Scientific
+                </button>
+                <button class="nav-item" data-mode="converter">
+                    <i class="fa-solid fa-arrows-repeat"></i> Unit Converter
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="theme-controls">
+                    <label>Theme</label>
+                    <div class="theme-picker">
+                        <button class="theme-btn active" data-theme="theme-dark" title="Cyber Dark">
+                            <span class="color-dot dark-dot"></span>
+                        </button>
+                        <button class="theme-btn" data-theme="theme-neon" title="Neon Cyberpunk">
+                            <span class="color-dot neon-dot"></span>
+                        </button>
+                        <button class="theme-btn" data-theme="theme-light" title="Clean Light">
+                            <span class="color-dot light-dot"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sound-toggle">
+                    <span>Key Sounds</span>
+                    <button class="toggle-switch active" id="soundToggle" aria-label="Toggle Key Sounds">
+                        <span class="toggle-knob"></span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Calculator Interface -->
+        <main class="main-content">
+            <!-- Header bar for mobile & quick toggles -->
+            <header class="top-bar">
+                <button class="icon-btn sidebar-toggle-btn" id="openSidebar" aria-label="Open navigation menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="mode-title" id="currentModeTitle">Standard Calculator</div>
+                <div class="top-actions">
+                    <button class="icon-btn" id="copyResultBtn" title="Copy Result">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                    <button class="icon-btn" id="historyToggleBtn" title="Toggle History Log">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Calculator Card -->
+            <div class="calculator-card" id="calculatorCard">
+                <!-- Display Section -->
+                <div class="display-section">
+                    <div class="expression-display" id="expressionDisplay" aria-live="polite"></div>
+                    <div class="result-container">
+                        <span class="degree-rad-badge" id="angleUnitBadge">DEG</span>
+                        <div class="result-display" id="resultDisplay" aria-live="polite">0</div>
+                    </div>
+                </div>
+
+                <!-- Memory Toolbar -->
+                <div class="memory-toolbar" id="memoryBar">
+                    <button class="mem-btn" data-action="mc" title="Memory Clear">MC</button>
+                    <button class="mem-btn" data-action="mr" title="Memory Recall">MR</button>
+                    <button class="mem-btn" data-action="m-plus" title="Memory Add">M+</button>
+                    <button class="mem-btn" data-action="m-minus" title="Memory Subtract">M-</button>
+                    <button class="mem-btn" data-action="ms" title="Memory Store">MS</button>
+                </div>
+
+                <!-- Keypad Area -->
+                <div class="keypad-container" id="keypadContainer">
+                    <!-- Standard Keypad Grid -->
+                    <div class="keypad-grid standard-grid" id="standardGrid">
+                        <!-- Row 1 -->
+                        <button class="key-btn action-clear" data-action="clear">C</button>
+                        <button class="key-btn action-delete" data-action="delete" title="Backspace"><i class="fa-solid fa-delete-left"></i></button>
+                        <button class="key-btn action-op" data-value="%">%</button>
+                        <button class="key-btn action-op" data-value="/">÷</button>
+                        
+                        <!-- Row 2 -->
+                        <button class="key-btn" data-value="7">7</button>
+                        <button class="key-btn" data-value="8">8</button>
+                        <button class="key-btn" data-value="9">9</button>
+                        <button class="key-btn action-op" data-value="*">×</button>
+
+                        <!-- Row 3 -->
+                        <button class="key-btn" data-value="4">4</button>
+                        <button class="key-btn" data-value="5">5</button>
+                        <button class="key-btn" data-value="6">6</button>
+                        <button class="key-btn action-op" data-value="-">−</button>
+
+                        <!-- Row 4 -->
+                        <button class="key-btn" data-value="1">1</button>
+                        <button class="key-btn" data-value="2">2</button>
+                        <button class="key-btn" data-value="3">3</button>
+                        <button class="key-btn action-op" data-value="+">+</button>
+
+                        <!-- Row 5 -->
+                        <button class="key-btn action-op" data-action="negate">±</button>
+                        <button class="key-btn" data-value="0">0</button>
+                        <button class="key-btn" data-value=".">.</button>
+                        <button class="key-btn action-equals" data-action="calculate">=</button>
+                    </div>
+
+                    <!-- Scientific Extra Panel (Injected dynamically or revealed in Scientific mode) -->
+                    <div class="keypad-grid scientific-grid hidden" id="scientificGrid">
+                        <button class="key-btn action-sci" id="degRadToggle">DEG</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="sin">sin</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="cos">cos</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="tan">tan</button>
+                        
+                        <button class="key-btn action-sci" data-action="func" data-func="asin">sin⁻¹</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="acos">cos⁻¹</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="atan">tan⁻¹</button>
+                        <button class="key-btn action-sci" data-value="^">xʸ</button>
+
+                        <button class="key-btn action-sci" data-action="func" data-func="log">log</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="ln">ln</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="sqrt">√</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="cbrt">³√</button>
+
+                        <button class="key-btn action-sci" data-value="(">(</button>
+                        <button class="key-btn action-sci" data-value=")">)</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="fact">n!</button>
+                        <button class="key-btn action-sci" data-value="π">π</button>
+
+                        <button class="key-btn action-sci" data-value="e">e</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="sqr">x²</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="cube">x³</button>
+                        <button class="key-btn action-sci" data-action="func" data-func="recip">1/x</button>
+                    </div>
+
+                    <!-- Converter View -->
+                    <div class="converter-view hidden" id="converterView">
+                        <div class="converter-type-selector">
+                            <label for="converterCategory">Category</label>
+                            <select id="converterCategory" class="custom-select">
+                                <option value="length">Length</option>
+                                <option value="weight">Weight / Mass</option>
+                                <option value="temperature">Temperature</option>
+                                <option value="digital">Data Storage</option>
+                            </select>
+                        </div>
+
+                        <div class="converter-group">
+                            <div class="conv-field">
+                                <label for="convValue1">From</label>
+                                <input type="number" id="convValue1" value="1" class="conv-input">
+                                <select id="convUnit1" class="custom-select"></select>
+                            </div>
+                            <div class="conv-swap">
+                                <button class="icon-btn" id="swapUnitsBtn" title="Swap Units">
+                                    <i class="fa-solid fa-right-left"></i>
+                                </button>
+                            </div>
+                            <div class="conv-field">
+                                <label for="convValue2">To</label>
+                                <input type="number" id="convValue2" value="100" class="conv-input" readonly>
+                                <select id="convUnit2" class="custom-select"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- History Drawer -->
+        <aside class="history-drawer" id="historyDrawer">
+            <div class="history-header">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> Calculation History</h3>
+                <button class="icon-btn" id="closeHistoryBtn" aria-label="Close history">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="history-content" id="historyList">
+                <div class="empty-history">
+                    <i class="fa-regular fa-folder-open"></i>
+                    <p>No history yet</p>
+                </div>
+            </div>
+            <div class="history-footer">
+                <button class="btn-secondary" id="clearHistoryBtn">
+                    <i class="fa-solid fa-trash-can"></i> Clear History
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast">Copied to clipboard!</div>
+
+    <script src="script.js"></script>
+</body>
+</html>

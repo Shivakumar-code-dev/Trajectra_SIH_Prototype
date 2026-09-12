@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'SUPER_ADMIN'];
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ── Users ─────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ── Buildings ─────────────────────────────────────────────────
+    match /buildings/{buildingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+
+      // Floors
+      match /floors/{floorId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+
+      // Rooms
+      match /rooms/{roomId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+
+      // Doors
+      match /doors/{doorId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+
+      // Destinations
+      match /destinations/{destId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+        // Allow incrementing visitCount from mobile app
+        allow update: if isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['visitCount']);
+      }
+
+      // Navigation Nodes
+      match /nodes/{nodeId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+
+      // Navigation Edges
+      match /edges/{edgeId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+
+      // QR Checkpoints
+      match /qr_checkpoints/{checkpointId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+        // Allow incrementing scanCount from mobile app
+        allow update: if isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount']);
+      }
+    }
+
+    // ── Models ────────────────────────────────────────────────────
+    match /models/{modelId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ── Published Versions ────────────────────────────────────────
+    match /published_versions/{versionId} {
+      allow read: if isAuthenticated();  // mobile app reads this
+      allow write: if isAdmin();
+    }
+
+    // ── Navigation Sessions (Analytics) ──────────────────────────
+    match /navigation_sessions/{sessionId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();  // mobile app logs sessions
+      allow update, delete: if isAdmin();
+    }
+  }
+}

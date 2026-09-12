@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+env/
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Node / JS
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Android
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+android-app/google-services.json
+*.apk
+*.aab
+*.keystore
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
+
+# Secrets — NEVER commit these
+*.env
+service-account.json
+google-services.json
+
+# Uploads / temp
+admin-web/backend/uploads/
+admin-web/frontend/assets/models/temp/
+
+# Logs
+*.log
+logs/
